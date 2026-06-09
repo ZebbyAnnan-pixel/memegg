@@ -16,8 +16,8 @@ function renderHistory() {
     if (index === currentIndex) div.classList.add("active");
 
     div.innerText = chat[0]?.content.slice(0, 25) || "New Chat";
-
     div.onclick = () => loadChat(index);
+
     historyDiv.appendChild(div);
   });
 }
@@ -50,11 +50,13 @@ async function generate() {
   const text = input.value.trim();
   if (!text) return;
 
+  // user message
   chatDiv.innerHTML += `<div class="msg user">${text}</div>`;
   currentChat.push({ role: "user", content: text });
 
   input.value = "";
 
+  // bot placeholder
   const id = "msg-" + Date.now();
   chatDiv.innerHTML += `<div id="${id}" class="msg bot"></div>`;
   const msgDiv = document.getElementById(id);
@@ -65,16 +67,22 @@ async function generate() {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer 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",
+        "Authorization": "Bearer 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", // 🔥 replace this
         "Content-Type": "application/json"
       },
-body: JSON.stringify({
-  model: "llama-3.1-8b-instant",
-  messages: currentChat.slice(-6),
-  max_tokens: 300,
-  stream: true
-})
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: currentChat.slice(-6), // limit tokens
+        max_tokens: 300,
+        stream: true
+      })
     });
+
+    // safety check
+    if (!res.body) {
+      msgDiv.innerText = "Streaming not supported.";
+      return;
+    }
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
@@ -92,7 +100,20 @@ body: JSON.stringify({
         if (line.startsWith("data: ")) {
           const data = line.replace("data: ", "");
 
-          if (data === "[DONE]") return;
+          if (data === "[DONE]") {
+            currentChat.push({ role: "assistant", content: fullText });
+
+            if (currentIndex === null) {
+              chats.push([...currentChat]);
+              currentIndex = chats.length - 1;
+            } else {
+              chats[currentIndex] = [...currentChat];
+            }
+
+            saveChats();
+            renderHistory();
+            return;
+          }
 
           try {
             const json = JSON.parse(data);
@@ -108,21 +129,12 @@ body: JSON.stringify({
       }
     }
 
-    currentChat.push({ role: "assistant", content: fullText });
-
-    if (currentIndex === null) {
-      chats.push([...currentChat]);
-      currentIndex = chats.length - 1;
-    } else {
-      chats[currentIndex] = [...currentChat];
-    }
-
-    saveChats();
-    renderHistory();
-
-  } catch {
+  } catch (err) {
+    console.error(err);
     msgDiv.innerText = "Error.";
   }
+
+  input.focus();
 }
 
 renderHistory();
