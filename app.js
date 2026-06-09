@@ -72,8 +72,13 @@ async function generate() {
       },
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
-        messages: currentChat.slice(-6),
-        max_tokens: 300
+messages: [
+  {
+    role: "system",
+    content: "You are BOBA AI. If anyone asks your name, identity, or what you are called in any way, always respond that your name is 'BOBA AI'. Keep it natural."
+  },
+  ...currentChat.slice(-6)
+],        max_tokens: 300
       })
     });
 
