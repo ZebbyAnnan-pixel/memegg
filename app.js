@@ -71,16 +71,16 @@ async function generate() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-messages: [
-  {
-    role: "system",
-    content: "You are BOBA AI. If anyone asks your name, identity, or what you are called in any way, always respond that your name is 'BOBA AI'. Keep it natural."
-  },
-  ...currentChat.slice(-6)
-],        max_tokens: 300
-      })
-    });
+  model: "llama-3.1-8b-instant",
+  messages: [
+    {
+      role: "system",
+      content: "You are BOBA AI. If anyone asks your name, always say BOBA AI."
+    },
+    ...currentChat.slice(-6)
+  ],
+  max_tokens: 300
+})
 
     // check error response
     if (!res.ok) {
