@@ -15,7 +15,7 @@ function renderHistory() {
     div.className = "history-item";
     if (index === currentIndex) div.classList.add("active");
 
-    div.innerText = chat[0]?.content.slice(0, 25) || "New Chat";
+    div.innerText = chat[0]?.content?.slice(0, 25) || "New Chat";
     div.onclick = () => loadChat(index);
 
     historyDiv.appendChild(div);
@@ -30,9 +30,13 @@ function loadChat(index) {
   chatDiv.innerHTML = "";
 
   currentChat.forEach(msg => {
-    chatDiv.innerHTML += `<div class="msg ${msg.role}">${msg.content}</div>`;
+    const el = document.createElement("div");
+    el.className = `msg ${msg.role}`;
+    el.innerHTML = msg.content.replace(/\n/g, "<br>");
+    chatDiv.appendChild(el);
   });
 
+  chatDiv.scrollTop = chatDiv.scrollHeight;
   renderHistory();
 }
 
@@ -51,15 +55,20 @@ async function generate() {
   if (!text) return;
 
   // user message
-  chatDiv.innerHTML += `<div class="msg user">${text}</div>`;
+  const userMsg = document.createElement("div");
+  userMsg.className = "msg user";
+  userMsg.innerText = text;
+  chatDiv.appendChild(userMsg);
+
   currentChat.push({ role: "user", content: text });
 
   input.value = "";
 
   // bot placeholder
-  const id = "msg-" + Date.now();
-  chatDiv.innerHTML += `<div id="${id}" class="msg bot">Typing...</div>`;
-  const msgDiv = document.getElementById(id);
+  const botMsg = document.createElement("div");
+  botMsg.className = "msg bot";
+  botMsg.innerText = "Typing...";
+  chatDiv.appendChild(botMsg);
 
   chatDiv.scrollTop = chatDiv.scrollHeight;
 
@@ -67,36 +76,34 @@ async function generate() {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer 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", // 🔥 PUT NEW KEY
+        "Authorization": "Bearer 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", // ⚠️ REPLACE THIS
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-  model: "llama-3.1-8b-instant",
-  messages: [
-    {
-      role: "system",
-      content: "You are BOBA AI. If anyone asks your name, always say BOBA AI."
-    },
-    ...currentChat.slice(-6)
-  ],
-  max_tokens: 300
-})
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: "You are BOBA AI. If anyone asks your name, always say BOBA AI."
+          },
+          ...currentChat.slice(-6)
+        ],
+        max_tokens: 300
+      })
+    });
 
-    // check error response
     if (!res.ok) {
-      const errText = await res.text();
-      console.error("API Error:", errText);
-      msgDiv.innerText = "API Error.";
+      const err = await res.text();
+      console.error("API Error:", err);
+      botMsg.innerText = "API Error.";
       return;
     }
 
     const data = await res.json();
-
     const reply = data?.choices?.[0]?.message?.content || "No response.";
 
-    msgDiv.innerHTML = reply.replace(/\n/g, "<br>");
+    botMsg.innerHTML = reply.replace(/\n/g, "<br>");
 
-    // save assistant reply
     currentChat.push({ role: "assistant", content: reply });
 
     if (currentIndex === null) {
@@ -111,15 +118,15 @@ async function generate() {
 
   } catch (err) {
     console.error("Fetch Error:", err);
-    msgDiv.innerText = "Network Error.";
+    botMsg.innerText = "Network Error.";
   }
 
   input.focus();
 }
 
 // Enter key support
-document.getElementById("prompt").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
+document.getElementById("prompt").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     generate();
   }
