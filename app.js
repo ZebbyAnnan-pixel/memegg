@@ -68,12 +68,12 @@ async function generate() {
         "Authorization": "Bearer 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",
         "Content-Type": "application/json"
       },
-    body: JSON.stringify({
+body: JSON.stringify({
   model: "llama-3.1-8b-instant",
   messages: currentChat.slice(-6),
-  max_tokens: 300
+  max_tokens: 300,
   stream: true
-      })
+})
     });
 
     const reader = res.body.getReader();
@@ -92,7 +92,7 @@ async function generate() {
         if (line.startsWith("data: ")) {
           const data = line.replace("data: ", "");
 
-          if (data === "[DONE]") break;
+          if (data === "[DONE]") return;
 
           try {
             const json = JSON.parse(data);
