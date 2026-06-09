@@ -58,7 +58,7 @@ async function generate() {
 
   // bot placeholder
   const id = "msg-" + Date.now();
-  chatDiv.innerHTML += `<div id="${id}" class="msg bot"></div>`;
+  chatDiv.innerHTML += `<div id="${id}" class="msg bot">Typing...</div>`;
   const msgDiv = document.getElementById(id);
 
   chatDiv.scrollTop = chatDiv.scrollHeight;
@@ -67,74 +67,57 @@ async function generate() {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": "Bearer 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", // 🔥 replace this
+        "Authorization": "Bearer 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", // 🔥 PUT NEW KEY
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "llama-3.1-8b-instant",
-        messages: currentChat.slice(-6), // limit tokens
-        max_tokens: 300,
-        stream: true
+        messages: currentChat.slice(-6),
+        max_tokens: 300
       })
     });
 
-    // safety check
-    if (!res.body) {
-      msgDiv.innerText = "Streaming not supported.";
+    // check error response
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("API Error:", errText);
+      msgDiv.innerText = "API Error.";
       return;
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder("utf-8");
+    const data = await res.json();
 
-    let fullText = "";
+    const reply = data?.choices?.[0]?.message?.content || "No response.";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    msgDiv.innerHTML = reply.replace(/\n/g, "<br>");
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split("\n");
+    // save assistant reply
+    currentChat.push({ role: "assistant", content: reply });
 
-      for (let line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.replace("data: ", "");
-
-          if (data === "[DONE]") {
-            currentChat.push({ role: "assistant", content: fullText });
-
-            if (currentIndex === null) {
-              chats.push([...currentChat]);
-              currentIndex = chats.length - 1;
-            } else {
-              chats[currentIndex] = [...currentChat];
-            }
-
-            saveChats();
-            renderHistory();
-            return;
-          }
-
-          try {
-            const json = JSON.parse(data);
-            const content = json.choices[0].delta?.content;
-
-            if (content) {
-              fullText += content;
-              msgDiv.innerHTML = fullText.replace(/\n/g, "<br>");
-              chatDiv.scrollTop = chatDiv.scrollHeight;
-            }
-          } catch {}
-        }
-      }
+    if (currentIndex === null) {
+      chats.push([...currentChat]);
+      currentIndex = chats.length - 1;
+    } else {
+      chats[currentIndex] = [...currentChat];
     }
 
+    saveChats();
+    renderHistory();
+
   } catch (err) {
-    console.error(err);
-    msgDiv.innerText = "Error.";
+    console.error("Fetch Error:", err);
+    msgDiv.innerText = "Network Error.";
   }
 
   input.focus();
 }
+
+// Enter key support
+document.getElementById("prompt").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    generate();
+  }
+});
 
 renderHistory();
